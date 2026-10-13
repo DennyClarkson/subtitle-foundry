@@ -1,0 +1,47 @@
+export type Cue = { id: number; start: number; end: number; text: string; translation?: string; speechEnd?: number };
+export type TimingOptions = {trimToSpeechEnd?: boolean; endPaddingMs?: number; endTrimMs?: number; fillGapsMs?: number; maxCueDuration?: number};
+export type MediaInfo = { path: string; name: string; duration: number; width: number; height: number; fps: number; codec: string; audioCodec: string; audioTracks: { index: number; language: string; title: string }[]; size: number; url: string };
+export type StyleOptions = TimingOptions & { secondaryFont?: string; secondaryOutlineColor?: string; secondaryOutline?: number; secondaryShadow?: number; secondaryBold?: boolean; stripFinalPeriod?: boolean; preset: string; font: string; fontSize: number; secondarySize: number; primaryColor: string; secondaryColor: string; outlineColor: string; backColor: string; outline: number; shadow: number; bold: boolean; alignment: number; marginV: number; marginL: number; marginR: number; spacing: number; borderStyle: number; secondaryOnTop: boolean; subtitleMode: 'source'|'translation'|'bilingual'; encoding: 'utf8'|'utf8bom'|'utf16le'; maxLineChars: number; offset: number; playResX: number; playResY: number };
+export type EncodeOptions = { preset: string; container: 'mp4'|'mkv'|'webm'|'mov'; codec: string; qualityMode: 'quality'|'bitrate'; quality: number; bitrate: number; maxrate: number; bufsize: number; speed: string; pixelFormat: string; profile: string; resolution: string; fps: string; audioCodec: string; audioBitrate: number; audioSampleRate: string; audioChannels: string; audioTrack: number; faststart: boolean; tune: string; deinterlace: boolean; colorMode: string; threads: number };
+export type AsrOptions = { model: string; language: string; threads: number; maxChars: number; maxDuration: number; audioTrack: number; prompt: string; start: number; duration: number };
+export type TranslateOptions = { model: string; sourceLanguage: string; targetLanguage: string; mode: 'source'|'translation'|'bilingual'; glossary: string; chunkSize: number; polish: boolean };
+export type Job = { id: string; kind: string; status: 'running'|'completed'|'failed'|'cancelled'; stage: string; progress: number; message: string; result?: any; error?: string; startedAt: string; batch?: {presetName: string; items: BatchItem[]; current: number; total: number} };
+export type Status = { root: string; ffmpeg: boolean; whisper: boolean; deepseek: boolean; minimax: boolean; models: { id: string; label: string; size: string; installed: boolean }[]; encoders: string[]; version: string };
+export type Settings = { asr: AsrOptions; translate: TranslateOptions; style: StyleOptions; encode: EncodeOptions };
+export type WorkflowPreset = {version: 1; id: string; name: string; description: string; settings: Settings; batch: {recursive: boolean; continueOnError: boolean}};
+export type WorkspaceInfo = {root: string; inputs: string; subtitles: string; presetsDir: string; outputs: string; projects: string; presets: WorkflowPreset[]; presetErrors: {file: string; error: string}[]; videos: {path: string; name: string; relativePath: string; size: number}[]; warning?: string};
+export type BatchItem = {input: string; name: string; status: 'pending'|'running'|'completed'|'failed'|'cancelled'; stage: string; progress: number; folder?: string; error?: string; cleanupWarning?: string};
+export type ExportResult = { folder: string; files: { label: string; path: string }[]; cues: Cue[] };
+export type Project = { media: MediaInfo|null; cues: Cue[]; settings: Settings; lastExport?: ExportResult };
+export interface StudioAPI {
+  getWorkspace(): Promise<WorkspaceInfo>;
+  chooseWorkspace(): Promise<WorkspaceInfo|null>;
+  reloadWorkspace(): Promise<WorkspaceInfo>;
+  saveWorkflowPreset(input: {name: string; settings: Settings; batch?: {recursive: boolean; continueOnError: boolean}}): Promise<WorkspaceInfo>;
+  startBatch(input: {presetId: string}): Promise<string>;
+  status(): Promise<Status>;
+  defaults(): Promise<Settings>;
+  chooseVideo(): Promise<MediaInfo|null>;
+  sampleVideo(): Promise<MediaInfo|null>;
+  chooseSubtitles(encoding?: string): Promise<{ cues: Cue[]; path: string }|null>;
+  chooseTranslation(encoding?: string): Promise<{ cues: Cue[]; path: string }|null>;
+  probe(path: string): Promise<MediaInfo>;
+  startTranscribe(input: { media: MediaInfo; options: AsrOptions }): Promise<string>;
+  startTranslate(input: { cues: Cue[]; options: TranslateOptions }): Promise<string>;
+  exportSubtitles(input: { cues: Cue[]; style: StyleOptions; mode: TranslateOptions['mode']; name: string; media?: MediaInfo|null }): Promise<ExportResult>;
+  startBurn(input: { media: MediaInfo; cues: Cue[]; style: StyleOptions; encode: EncodeOptions; preview?: boolean }): Promise<string>;
+  downloadModel(model: string): Promise<string>;
+  cancelJob(id: string): Promise<void>;
+  getJobs(): Promise<Job[]>;
+  onJob(callback: (job: Job) => void): () => void;
+  saveProject(project: Project): Promise<string>;
+  loadProject(): Promise<Project|null>;
+  loadLastProject(): Promise<Project|null>;
+  reveal(path: string): Promise<void>;
+  openOutput(path: string): Promise<void>;
+  mediaUrl(path: string): Promise<string>;
+  releaseMedia(url: string): Promise<void>;
+  saveSettings(settings: Settings): Promise<void>;
+  loadSettings(): Promise<Settings|null>;
+}
+declare global { interface Window { studio: StudioAPI } }
